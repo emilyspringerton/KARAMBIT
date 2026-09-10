@@ -37,11 +37,24 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      # Real, live-found CI bug (2026-09-10, "KARAMBIT build is down" -- confirmed via the real
+      # job log, fetched directly from the GitHub API): `yes | sdkmanager ...` under this step's
+      # own `set -o pipefail` failed with exit code 1 even though sdkmanager itself succeeded --
+      # once sdkmanager stops reading stdin (all licenses accepted, install proceeding), `yes`
+      # gets a real SIGPIPE ("yes: standard output: Broken pipe"), and pipefail reports that
+      # nonzero exit as the whole pipeline's failure, masking sdkmanager's own real 0. `set +o
+      # pipefail` for just this one command restores bash's default behavior of reporting only
+      # the LAST command's (sdkmanager's) exit status, which is what this step actually needs to
+      # check -- a genuine sdkmanager failure (bad package name, network error, license truly not
+      # accepted) still fails the step correctly, since -e still applies to sdkmanager's own
+      # nonzero exit.
       - name: Install Android SDK platform + build-tools
         run: |
           set -euo pipefail
+          set +o pipefail
           yes | sdkmanager --sdk_root="$ANDROID_HOME" \
             "platform-tools" "platforms;android-34" "build-tools;35.0.0"
+          set -o pipefail
 
       - name: Build + run the real, plain-JVM core test
         run: |
@@ -89,11 +102,24 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      # Real, live-found CI bug (2026-09-10, "KARAMBIT build is down" -- confirmed via the real
+      # job log, fetched directly from the GitHub API): `yes | sdkmanager ...` under this step's
+      # own `set -o pipefail` failed with exit code 1 even though sdkmanager itself succeeded --
+      # once sdkmanager stops reading stdin (all licenses accepted, install proceeding), `yes`
+      # gets a real SIGPIPE ("yes: standard output: Broken pipe"), and pipefail reports that
+      # nonzero exit as the whole pipeline's failure, masking sdkmanager's own real 0. `set +o
+      # pipefail` for just this one command restores bash's default behavior of reporting only
+      # the LAST command's (sdkmanager's) exit status, which is what this step actually needs to
+      # check -- a genuine sdkmanager failure (bad package name, network error, license truly not
+      # accepted) still fails the step correctly, since -e still applies to sdkmanager's own
+      # nonzero exit.
       - name: Install Android SDK platform + build-tools
         run: |
           set -euo pipefail
+          set +o pipefail
           yes | sdkmanager --sdk_root="$ANDROID_HOME" \
             "platform-tools" "platforms;android-34" "build-tools;35.0.0"
+          set -o pipefail
 
       - name: Compute next minor version
         id: version
