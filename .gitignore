@@ -3,3 +3,4 @@ bazel-*
 *.jar
 !gradle/wrapper/*.jar
 local.properties
+dist/
