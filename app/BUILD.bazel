@@ -1,0 +1,54 @@
+load("@rules_android//android:rules.bzl", "android_binary", "android_library")
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+
+# scan_core_lib -- the real, deliberately Android-free core (PARENA-generated ScanDecisions +
+# ScanResult/ScanStrategy/SshPortScanStrategy/ScanEngine). A plain java_library, buildable/
+# testable on any bare JVM with no Android SDK/emulator involved at all -- see ScanEngine.java's
+# own header comment for the full real rationale, same "core logic independently testable"
+# precedent SPIDERBEETLE's own smoke_test/Main.java already established for a different Android
+# app in this ecosystem.
+java_library(
+    name = "scan_core_lib",
+    srcs = [
+        "src/main/java/industrial/einhorn/karambit/ScanEngine.java",
+        "src/main/java/industrial/einhorn/karambit/ScanResult.java",
+        "src/main/java/industrial/einhorn/karambit/ScanStrategy.java",
+        "src/main/java/industrial/einhorn/karambit/SshPortScanStrategy.java",
+        "src/main/java/industrial/einhorn/karambit/generated/ScanDecisions.java",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# scan_core_test -- real, plain-JVM verification of the core scan logic (no Android SDK/emulator
+# needed, no JUnit dependency) -- see ScanCoreTest.java's own header comment for the full real
+# assertion list. A plain java_binary with a real main() + PASS/FAIL-counted assertions + a real
+# nonzero exit code on failure, same real convention every other test in this monorepo (PARENA's
+# own C test suite included) already uses, matching SPIDERBEETLE's own smoke_test/Main.java
+# precedent exactly (run directly via `java`/`bazel run`, not a JUnit runner).
+java_binary(
+    name = "scan_core_test",
+    srcs = ["src/test/java/industrial/einhorn/karambit/ScanCoreTest.java"],
+    main_class = "industrial.einhorn.karambit.ScanCoreTest",
+    deps = [":scan_core_lib"],
+)
+
+# karambit_lib -- the Android-dependent pieces (MainActivity, NetworkInfo -- both use real
+# android.* APIs) plus the app's own manifest/resources. Depends on scan_core_lib for the actual
+# scan logic.
+android_library(
+    name = "karambit_lib",
+    srcs = [
+        "src/main/java/industrial/einhorn/karambit/MainActivity.java",
+        "src/main/java/industrial/einhorn/karambit/NetworkInfo.java",
+    ],
+    manifest = "src/main/AndroidManifest.xml",
+    resource_files = glob(["src/main/res/**"]),
+    deps = [":scan_core_lib"],
+)
+
+# karambit -- the real, installable APK.
+android_binary(
+    name = "karambit",
+    manifest = "src/main/AndroidManifest.xml",
+    deps = [":karambit_lib"],
+)

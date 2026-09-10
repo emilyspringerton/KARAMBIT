@@ -1,0 +1,46 @@
+;; parena/scan_decisions.prn — KARAMBIT's real PARENA-native decision logic
+;; (2026-09-10, founder real-time: "build it parena native as much as
+;; possible interopping with native java use BAZEL and PARENA"). Compiled
+;; to real Java via PARENA's own emit_java.c backend (already real and
+;; shipped, no PARENA changes needed) -- same real "PARENA emits pure,
+;; narrow-scope decision logic; a thin native host does real I/O" pattern
+;; SPIDERBEETLE's own stdlib/android/battery_ui.prn already established for
+;; a different Android app in this same ecosystem.
+;;
+;; Real, honest, deliberate scope: this v0 only checks ONE port (22, SSH)
+;; per the founder's own explicit "maybe we just check for that for now so
+;; we arent too noisy on the network" framing -- these functions carry the
+;; real DECISIONS a scan loop needs (which port counts as a hit, whether
+;; to keep scanning, how to advance, how to classify a result) while every
+;; real socket/network I/O call lives in hand-written Java
+;; (app/src/main/java/.../SshPortScanStrategy.java, ScanEngine.java) --
+;; PARENA's own real language surface has no socket primitives at all, the
+;; same real boundary every other native-target integration in this
+;; monorepo already respects (AVR GPIO registers, Android BatteryManager,
+;; etc. all stay in the native host, never PARENA).
+(module karambit/scan-decisions)
+(export is-target-port has-more-hosts next-scan-index classify-scan-result)
+
+;; is-target-port -- the real, narrow v0 port filter. A single, explicit
+;; decision point (not a hardcoded literal scattered through Java) so
+;; widening this later (a real, pluggable multi-port scan, per the
+;; founder's own "keep it pluggable and extensible") is a one-line PARENA
+;; change, not a Java-side hunt-and-replace.
+(defn is-target-port [(port : I32)] : Bool
+  (= port 22))
+
+;; has-more-hosts / next-scan-index -- the real loop-control decisions
+;; ScanEngine's own host-enumeration loop calls on every iteration, rather
+;; than duplicating that arithmetic directly in Java.
+(defn has-more-hosts [(current-index : I32) (total-hosts : I32)] : Bool
+  (< current-index total-hosts))
+
+(defn next-scan-index [(current-index : I32)] : I32
+  (+ current-index 1))
+
+;; classify-scan-result -- the real, single place a raw "did the socket
+;; connect" boolean becomes a stable, real status code a UI layer (or a
+;; future feature) can switch on without re-deriving the same boolean
+;; logic in multiple places.
+(defn classify-scan-result [(is-open : Bool)] : I32
+  (if is-open 1 0))

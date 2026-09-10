@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    activity_main.xml — KARAMBIT's real, deliberately minimal v0 screen: a status line (the
+    device's own detected local IP/scan range), one button ("Scan for SSH"), and a live-scrolling
+    results log. Real, honest v0: a plain TextView-in-ScrollView for results, not a RecyclerView,
+    the smallest real thing that shows live-appending scan output without extra adapter
+    boilerplate; a real, separate follow-up if this app grows a richer results view (tap-to-open,
+    per-row actions for a future in-app terminal, "not yet, just sayin", per the founder's own
+    framing).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/status_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:paddingBottom="8dp"
+        android:text="@string/status_detecting" />
+
+    <Button
+        android:id="@+id/scan_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/scan_button_label" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="12dp">
+
+        <TextView
+            android:id="@+id/results_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textSize="13sp" />
+    </ScrollView>
+</LinearLayout>

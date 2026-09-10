@@ -1,0 +1,10 @@
+# Real, necessary Java version pinning for rules_android's own internal host-side ("for tool")
+# targets (2026-09-10, live-checked, not guessed): without these, `bazel build //app:karambit`
+# fails compiling rules_android's own DexFileSplitter.java ("could not locate class file for
+# java.lang.Record") -- a real target/tool JDK-version-selection mismatch between rules_java's
+# default host-tool resolution and this project's own --java_runtime_version. Pinning BOTH the
+# target and tool Java version/runtime consistently to 21 fixes it.
+build --java_runtime_version=remotejdk_21
+build --java_language_version=21
+build --tool_java_runtime_version=remotejdk_21
+build --tool_java_language_version=21

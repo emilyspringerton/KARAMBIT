@@ -1,0 +1,5 @@
+bazel-*
+*.class
+*.jar
+!gradle/wrapper/*.jar
+local.properties
