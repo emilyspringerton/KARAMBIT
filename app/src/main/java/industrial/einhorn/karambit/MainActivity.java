@@ -9,6 +9,7 @@ import android.widget.TextView;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * MainActivity — KARAMBIT's real v0 UI (2026-09-10, founder real-time: "build a toolkit android
@@ -56,20 +57,33 @@ public final class MainActivity extends Activity {
             + "\nWill scan: " + scanPrefix + "1–" + scanPrefix + "254, port 22");
     }
 
+    /** Real, total host count for the fixed v0 scan range (1–254 inclusive) — used only to render
+     * a real "N/254 scanned" progress line as results come in, not a scan-logic value itself
+     * (that real range/loop-control logic lives in {@link ScanEngine}, driven by PARENA's own
+     * `has-more-hosts`/`next-scan-index`). Real, honest completeness pass (2026-09-10): a bare
+     * "scanning…" message with no feedback until the whole /24 finished felt unfinished for a
+     * "quickly check" tool — this makes visible progress the real, live default instead. */
+    private static final int TOTAL_HOSTS = 254;
+
     private void onScanClicked(View unused) {
         scanButton.setEnabled(false);
         resultsText.setText("");
+        AtomicInteger scanned = new AtomicInteger(0);
         appendLine("Scanning " + scanPrefix + "1–254 on port 22 …");
+        statusText.setText("Scanning… 0/" + TOTAL_HOSTS);
 
         uiExecutor.execute(() -> {
             ScanEngine engine = new ScanEngine(new SshPortScanStrategy(), /* timeoutMillis= */ 300);
             engine.scan(scanPrefix, 1, 254, 22, result -> {
+                int done = scanned.incrementAndGet();
                 if (result.isOpen()) {
                     runOnUiThread(() -> appendLine(result.toString()));
                 }
+                runOnUiThread(() -> statusText.setText("Scanning… " + done + "/" + TOTAL_HOSTS));
             });
             runOnUiThread(() -> {
                 appendLine("Scan complete.");
+                statusText.setText("Scan complete: " + TOTAL_HOSTS + "/" + TOTAL_HOSTS + " hosts checked.");
                 scanButton.setEnabled(true);
             });
         });

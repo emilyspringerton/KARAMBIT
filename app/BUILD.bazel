@@ -46,9 +46,18 @@ android_library(
     deps = [":scan_core_lib"],
 )
 
-# karambit -- the real, installable APK.
+# karambit -- the real, installable APK. versionCode/versionName are real placeholders for local
+# dev builds -- CI's own release job (.github/workflows/ci.yml's own "release" job) sed-patches
+# both to a real, computed value (github.run_number + the next auto-bumped minor version tag,
+# same real "auto minor version bump" scheme PARENA's own ci.yml already established) immediately
+# before building, so a real release always carries a real, meaningful version, not this literal
+# "1"/"0.0.0-dev".
 android_binary(
     name = "karambit",
     manifest = "src/main/AndroidManifest.xml",
+    manifest_values = {
+        "versionCode": "1",
+        "versionName": "0.0.0-dev",
+    },
     deps = [":karambit_lib"],
 )

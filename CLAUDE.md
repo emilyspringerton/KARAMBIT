@@ -13,6 +13,17 @@ why).
 See `README.md`'s own "Build status" section for the current, live-checked state — kept there
 rather than duplicated here since it changes as this repo builds out.
 
+## Real, found-live gotcha: no literal `--` inside any XML comment
+
+Bit twice in this repo already (`AndroidManifest.xml`, `res/layout/activity_main.xml`): a real
+XML spec rule, not an Android-specific quirk — a comment body may not contain the two-character
+sequence `--` anywhere, only at its own closing `-->`. `aapt2` enforces this strictly and fails
+the whole resource-packaging step with a real, correctly-real "XML syntax error... invalid
+sequence '--' not allowed in comments" if violated. This repo's own established prose style
+elsewhere uses `--` as a real, plain em-dash substitute — when writing an XML comment
+specifically (manifest, layout, any other real Android XML resource), use `:` or a plain comma
+instead.
+
 ## Stack
 
 Bazel (bzlmod), not Gradle — a real, explicit founder choice. `rules_android` for the real,

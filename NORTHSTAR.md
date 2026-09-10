@@ -71,6 +71,29 @@ it. `ScanEngine` depends only on the interface. Adding a second real probe kind 
 HTTP HEAD, a real SSH handshake attempt) is a new class, not a rewrite. `ScanResult` is a plain,
 stable data shape designed so a later feature (see below) can act on it without rework.
 
+## Real product-completeness pass (2026-09-10, same day)
+
+Closed the gaps a real, shippable v0 needs beyond the core scan logic: a real launcher icon
+(a generated radar-style PNG at every real density bucket, `mdpi` through `xxxhdpi`), explicit
+`minSdkVersion`/`targetSdkVersion` in the manifest (previously left implicit and silently patched
+by a Bazel build step — now documented, not a build-tool side effect), real `versionCode`/
+`versionName` (see "Real auto-releases" below for how a real release gets a real version baked
+in), and a live scan-progress indicator (`N/254 checked`, not just a start/finish message) —
+KARAMBIT's own `MainActivity` now gives real, continuous feedback during a scan instead of going
+quiet until the whole /24 finishes.
+
+## Real auto-releases
+
+Same real scheme PARENA's own `ci.yml` already established in this monorepo: every green build on
+`main` auto-bumps the MINOR version (`vX.Y.0 -> vX.(Y+1).0`) and cuts a real GitHub Release with
+the real APK attached, versioned for real (`versionCode` = `github.run_number`, a real,
+monotonically-increasing integer across this repo's whole CI history; `versionName` = the
+computed tag). `.github/workflows/ci.yml`'s own `build_and_test` job runs on every push/PR (real
+plain-JVM tests + a real, placeholder-versioned APK build, uploaded as a downloadable workflow
+artifact); the `release` job (main-branch pushes only) re-builds with the real version sed-patched
+into `app/BUILD.bazel` first, so the shipped APK genuinely carries a real, meaningful version, not
+a build-time constant.
+
 ## Not built yet (named directly, not hidden)
 
 - **An in-app terminal** — the founder's own explicit "we may very well want to build an in app
@@ -86,3 +109,5 @@ stable data shape designed so a later feature (see below) can act on it without 
 - **Installing/running the built APK on a real device** — the APK itself is real, signed, and
   verified (`apksigner verify`, `aapt2 dump badging`), see `README.md`'s own "Build status"
   section — but no device/emulator is reachable from this sandbox to actually install and run it.
+  A real GitHub Release APK (see "Real auto-releases" above) is the real path to actually testing
+  this on a device once CI has run on `main`.

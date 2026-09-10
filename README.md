@@ -77,6 +77,15 @@ file. Not needed if this repo isn't nested under a directory containing a `go.wo
   Not yet done: actually installing this APK on a real device (no device/emulator reachable from
   this sandbox) — the build artifact itself is real and verified, the install-and-run step isn't.
 
+## Releases
+
+Real CI/CD, matching PARENA's own established pattern in this monorepo: `.github/workflows/ci.yml`
+builds + tests on every push/PR, and auto-cuts a real, versioned GitHub Release on every green
+build on `main` — `vX.Y.0`, minor-bumped, real APK attached, real `versionCode`/`versionName`
+baked in (not the repo's own placeholder dev values). See `NORTHSTAR.md`'s own "Real auto-releases"
+section for the exact mechanism. Grab the latest signed APK from this repo's Releases page — no
+local build needed to try it.
+
 ## Permissions
 
 `INTERNET` and `ACCESS_NETWORK_STATE` — both real, ordinary (non-"dangerous") Android
@@ -87,3 +96,9 @@ permissions, no runtime prompt needed on any current Android version.
 No in-app terminal, no real CIDR/netmask arithmetic (a real /24 is assumed), no configurable
 scan scope. All named directly in `NORTHSTAR.md`'s own "Not built yet" section — real, honest,
 deliberately deferred, not silently missing.
+
+## Product completeness
+
+A real launcher icon (all density buckets), explicit `minSdkVersion`/`targetSdkVersion`, real
+version info baked into every release build, and a live scan-progress indicator (not just a
+start/finish message) — see `NORTHSTAR.md`'s own "Real product-completeness pass" section.

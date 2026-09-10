@@ -1,0 +1,142 @@
+name: KARAMBIT CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  # build_and_test -- runs on every push/PR. Real, plain-JVM verification of the core scan logic
+  # (no Android SDK needed for that part at all -- see app/BUILD.bazel's own header comment on
+  # scan_core_lib/scan_core_test), then a real Android SDK setup and a real APK build (with this
+  # BUILD.bazel's own placeholder dev version -- see android_binary's own manifest_values comment
+  # for why a real version only gets baked in by the release job below), uploaded as a real,
+  # downloadable workflow artifact so a PR's own built APK is inspectable without needing a
+  # release cut.
+  build_and_test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Real bazel-contrib/setup-bazel, same real precedent PARENA's own ci.yml already
+      # establishes in this monorepo -- not assuming ubuntu-latest's own runner image happens to
+      # have a compatible bazel/bazelisk preinstalled.
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      # Real android-actions/setup-android (not relying on whatever GitHub's own runner image
+      # happens to have preinstalled) -- guarantees the exact real SDK components this repo's own
+      # rules_android needs (build-tools >= 35.0.0 is rules_android 0.7.3's own real hard minimum,
+      # confirmed live getting this repo's own local build working -- see README.md).
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform + build-tools
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --sdk_root="$ANDROID_HOME" \
+            "platform-tools" "platforms;android-34" "build-tools;35.0.0"
+
+      - name: Build + run the real, plain-JVM core test
+        run: |
+          set -euo pipefail
+          bazel run //app:scan_core_test
+
+      - name: Build the real APK
+        run: |
+          set -euo pipefail
+          bazel build //app:karambit
+
+      - name: Upload karambit.apk
+        uses: actions/upload-artifact@v4
+        with:
+          name: karambit-${{ github.run_number }}-${{ github.sha }}
+          path: bazel-bin/app/karambit.apk
+          if-no-files-found: error
+
+  # release -- real auto-versioning + GitHub Release, same real scheme PARENA's own ci.yml
+  # already established (founder real-time there: "whenever a build passes release it as a minor
+  # version" -> "like a . bump" -> "i will handle big bumps to signify human verify releases").
+  # Every green build on main auto-bumps the MINOR version (X.Y.0 -> X.(Y+1).0) and cuts a real
+  # GitHub Release with the real, correctly-versioned APK attached. Gated to push-to-main only
+  # (not PRs, not other branches).
+  release:
+    name: Tag & Release
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      # fetch-depth: 0 -- this job needs the full tag history to find the current version;
+      # actions/checkout's own default is a shallow clone that doesn't reliably include tags.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform + build-tools
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --sdk_root="$ANDROID_HOME" \
+            "platform-tools" "platforms;android-34" "build-tools;35.0.0"
+
+      - name: Compute next minor version
+        id: version
+        run: |
+          set -euo pipefail
+          latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)"
+          if [ -z "$latest" ]; then
+            major=0
+            minor=0
+          else
+            ver="${latest#v}"
+            major="$(echo "$ver" | cut -d. -f1)"
+            minor="$(echo "$ver" | cut -d. -f2)"
+          fi
+          next_minor=$((minor + 1))
+          next="v${major}.${next_minor}.0"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+
+      # Real version baked directly into the APK's own manifest before signing (versionCode/
+      # versionName can't be patched onto an already-signed APK after the fact) -- versionCode is
+      # github.run_number, a real, monotonically-increasing integer across this repo's entire CI
+      # history (Android requires versionCode to strictly increase for real upgrade semantics,
+      # even though sideloading itself doesn't enforce it); versionName is the human-readable tag
+      # computed above.
+      - name: Build the real, versioned APK
+        run: |
+          set -euo pipefail
+          sed -i \
+            -e 's/"versionCode": "1"/"versionCode": "${{ github.run_number }}"/' \
+            -e 's/"versionName": "0.0.0-dev"/"versionName": "${{ steps.version.outputs.next }}"/' \
+            app/BUILD.bazel
+          bazel build //app:karambit
+
+      - name: Tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEXT_VERSION: ${{ steps.version.outputs.next }}
+        run: |
+          set -euo pipefail
+          git tag "$NEXT_VERSION"
+          git push origin "$NEXT_VERSION"
+          cp bazel-bin/app/karambit.apk "karambit-${NEXT_VERSION}.apk"
+          gh release create "$NEXT_VERSION" \
+            "karambit-${NEXT_VERSION}.apk" \
+            --title "$NEXT_VERSION" \
+            --generate-notes
